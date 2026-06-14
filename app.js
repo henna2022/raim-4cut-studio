@@ -39,6 +39,7 @@ const THEMES = [
   { id:"coral",   hex:"#E8CBD3", logo:"pink"   }, { id:"night", hex:"#2A437E", logo:"navy"   },
 ];
 const MUSEUM_LOGO = "assets/seoulraim_logo.png";
+const MUSEUM_LOGO_WHITE = "assets/seoulraim_logo_white.png";   // 어두운 프레임용 흰색 반전
 const frameLogoPath = theme => `assets/frame-logo/frame-logo-${theme.logo}.png`;
 
 /* ============================================================ i18n ============================================================ */
@@ -66,8 +67,8 @@ const I18N = {
     composing:"프레임에 사진을 담는 중",
     resultTitle:"완성!", retake:"처음부터",
     download:"이미지 저장", qrTitle:"QR로 받아가세요",
-    qrLead:"휴대폰 카메라로 QR을 비추면 사진을 받을 수 있어요.",
-    qrExpire:"⏰ QR(사진 링크)은 2시간 뒤 사라져요. 미리 저장해 주세요!",
+    qrLead:"휴대폰 카메라로 QR을 스캔하면 사진을 받을 수 있어요.",
+    qrExpire:"⏰ QR(사진 링크)은 2시간 뒤 사라져요.\n미리 저장해 주세요!",
     qrNoStore:"QR을 만들려면 Supabase 설정이 필요해요.\n지금은 아래 버튼으로 저장만 가능합니다.",
   },
   en:{
@@ -448,7 +449,7 @@ async function prepareAssets(){
   // 선택된 버전의 1~4번 포즈를 컷마다 하나씩 쓰기 위해 모두 로드
   state._robotImgs = await Promise.all([1,2,3,4].map(i=>urlToImage(robotImgPath(state.robot.id, state.version, i))));
   state._logoImg   = await urlToImage(frameLogoPath(state.theme));
-  state._museumImg = await urlToImage(MUSEUM_LOGO);
+  state._museumImg = await urlToImage(isDark(state.theme.hex) ? MUSEUM_LOGO_WHITE : MUSEUM_LOGO);  // 어두운 배경이면 흰색 반전
   state._bgCanvas  = await buildBackgroundCanvas();
 }
 function robotImgForSlot(k){
@@ -468,12 +469,7 @@ async function buildBackgroundCanvas(){
   proceduralBackground(ctx); return c;
 }
 function proceduralBackground(ctx){
-  const base=state.theme.hex;
-  const g=ctx.createLinearGradient(0,0,OUT_W,OUT_H);
-  g.addColorStop(0, lighten(base,0.78)); g.addColorStop(1, lighten(base,0.55));
-  ctx.fillStyle=g; ctx.fillRect(0,0,OUT_W,OUT_H);
-  ctx.fillStyle=hexToRgba(base,0.18);
-  for(let i=0;i<120;i++){ const x=Math.random()*OUT_W, y=Math.random()*OUT_H, r=2+Math.random()*7; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); }
+  ctx.fillStyle=state.theme.hex; ctx.fillRect(0,0,OUT_W,OUT_H);   // 지정 헥사코드 단색
 }
 async function composeFrame(picks){
   const c=document.createElement("canvas"); c.width=OUT_W; c.height=OUT_H; const ctx=c.getContext("2d");
@@ -519,7 +515,7 @@ async function composeFrame(picks){
 
   /* ---- 하단: 나만의 문구 ---- */
   if(state.caption){
-    ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle="#16233A";
+    ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle=isDark(state.theme.hex)?"#fff":"#16233A";
     let fs=58; ctx.font=`${fs}px Jua, sans-serif`;
     const maxW = OUT_W - pad*2;
     while(ctx.measureText(state.caption).width > maxW && fs>22){ fs-=2; ctx.font=`${fs}px Jua, sans-serif`; }
@@ -626,8 +622,6 @@ function stopStream(){ if(state.stream){ state.stream.getTracks().forEach(t=>t.s
 function resetState(){ stopStream(); state.shots=[]; state.suggested=[]; state.picked=[]; state.caption=""; state._bgCanvas=null; state._robotImgs=[]; state._logoImg=null; state._museumImg=null; state._assetsP=null; }
 function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
 function urlToImage(src){ return new Promise(res=>{ const img=new Image(); img.crossOrigin="anonymous"; img.onload=()=>res(img); img.onerror=()=>res(null); img.src=src; }); }
-function hexToRgba(hex,a){ const n=parseInt(hex.slice(1),16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
-function lighten(hex,amt){ const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
-  r=Math.round(r+(255-r)*amt); g=Math.round(g+(255-g)*amt); b=Math.round(b+(255-b)*amt); return `rgb(${r},${g},${b})`; }
+function isDark(hex){ const n=parseInt(hex.slice(1),16); return (0.299*((n>>16)&255)+0.587*((n>>8)&255)+0.114*(n&255)) < 140; }
 
 render("start");
