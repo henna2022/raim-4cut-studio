@@ -52,8 +52,8 @@ async function ensureFonts(){
     await Promise.all([
       document.fonts.load('800 72px Pretendard'),
       document.fonts.load('600 44px Pretendard'),
-      document.fonts.load('300 26px Pretendard'),
-      document.fonts.load('400 76px "Nanum Pen Script"'),
+      document.fonts.load('400 26px Pretendard'),
+      document.fonts.load('400 76px Ttobak'),
     ]);
     await document.fonts.ready;
   }catch(e){}
@@ -535,13 +535,13 @@ async function composeFrame(picks){
   /* ---- 하단: 손글씨 문구 + 과학관 명칭 ---- */
   if(state.caption){
     ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle=ink;
-    let fs=78; ctx.font=`${fs}px "Nanum Pen Script", cursive`;
+    let fs=78; ctx.font=`${fs}px Ttobak, cursive`;
     const maxW=OUT_W-pad*2;
-    while(ctx.measureText(state.caption).width>maxW && fs>30){ fs-=2; ctx.font=`${fs}px "Nanum Pen Script", cursive`; }
+    while(ctx.measureText(state.caption).width>maxW && fs>30){ fs-=2; ctx.font=`${fs}px Ttobak, cursive`; }
     ctx.fillText(state.caption, OUT_W/2, OUT_H - 96);
   }
   ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle=subInk;
-  ctx.font="300 26px Pretendard, sans-serif";
+  ctx.font="400 26px Pretendard, sans-serif";
   ctx.fillText(MUSEUM_TEXT, OUT_W/2, OUT_H - 40);
   return c;
 }

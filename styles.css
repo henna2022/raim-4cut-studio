@@ -1,10 +1,16 @@
+/* 손글씨 문구용 — 네이버 또박또박 */
+@font-face{
+  font-family:'Ttobak';
+  src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/naverfont_03@1.0/Ddobakddobak.woff') format('woff');
+  font-weight:400; font-display:swap;
+}
 :root{
   --bg:#EAF0F8; --surface:#FFFFFF; --ink:#16233A; --muted:#6B7A93;
   --primary:#1AB2C8; --primary-deep:#138CA0; --accent:#FFC23C; --pop:#FF6B5C; --line:#D8E2F0;
   --shadow:0 18px 50px rgba(22,35,58,.14); --radius:26px;
   --display:'Pretendard',system-ui,-apple-system,sans-serif;
   --body:'Pretendard',system-ui,-apple-system,sans-serif;
-  --hand:'Nanum Pen Script','Pretendard',cursive;
+  --hand:'Ttobak','Pretendard',cursive;
 }
 /* 디스플레이(제목·버튼 등)는 Pretendard 굵게 */
 .brand b,h1,.btn,.cdnum,.qtitle,.count,.vercard,.robot .nm,.thumb .check,.swatch.sel::after,.qrcard .qtxt b,.shotchips span{font-weight:800;}
