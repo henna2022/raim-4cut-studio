@@ -8,6 +8,7 @@ const CONFIG = {
   COUNTDOWN_SEC: 3,
   TOTAL_SHOTS:   6,
   PICK_COUNT:    4,
+  LINK_EXPIRE_SEC: 7200,   // QR 서명 URL 만료 시간(초). 7200 = 2시간. 바꾸면 안내 문구 qrExpire도 함께 수정하세요.
 };
 
 /* 함께할 로봇 10종. 각 폴더 assets/processed/<id>/ 에
@@ -33,9 +34,9 @@ function robotImgPath(id, version, idx){
 const robotProfile = id => robotImgPath(id, "normal", 1);
 
 const THEMES = [
-  { id:"tomato",  hex:"#FF6B5C", logo:"red"    }, { id:"sun",   hex:"#FFC23C", logo:"yellow" },
-  { id:"mint",    hex:"#1AB2C8", logo:"green"  }, { id:"laven", hex:"#9B8CFF", logo:"purple" },
-  { id:"coral",   hex:"#FF8FB1", logo:"pink"   }, { id:"night", hex:"#2D3B57", logo:"navy"   },
+  { id:"tomato",  hex:"#FF6B6B", logo:"red"    }, { id:"sun",   hex:"#F2D97D", logo:"yellow" },
+  { id:"mint",    hex:"#7BD0CB", logo:"green"  }, { id:"laven", hex:"#C4BFE8", logo:"purple" },
+  { id:"coral",   hex:"#E8CBD3", logo:"pink"   }, { id:"night", hex:"#2A437E", logo:"navy"   },
 ];
 const MUSEUM_LOGO = "assets/seoulraim_logo.png";
 const frameLogoPath = theme => `assets/frame-logo/frame-logo-${theme.logo}.png`;
@@ -60,12 +61,13 @@ const I18N = {
     qInit:"나만의 문구", qLayout:"사진 배치를 골라요",
     qVersion:"로봇 버전을 골라요", verNormal:"일반", verSummer:"여름",
     layGrid:"2×2 그리드", layStrip:"세로 4컷",
-    initPh:"예: 우리 가족 ♥ / RAIM", initHint:"이름·문구 자유롭게 (한글/영문). 30자 이내, 비워둬도 돼요.",
+    initPh:"예: 라이미 / RAIM", initHint:"이름·문구 자유롭게 (한글/영문). 30자 이내(선택)",
     make:"프레임 완성! 촬영하기 ▶",
     composing:"프레임에 사진을 담는 중",
     resultTitle:"완성!", retake:"처음부터",
     download:"이미지 저장", qrTitle:"QR로 받아가세요",
     qrLead:"휴대폰 카메라로 QR을 비추면 사진을 받을 수 있어요.",
+    qrExpire:"⏰ QR(사진 링크)은 2시간 뒤 사라져요. 미리 저장해 주세요!",
     qrNoStore:"QR을 만들려면 Supabase 설정이 필요해요.\n지금은 아래 버튼으로 저장만 가능합니다.",
   },
   en:{
@@ -86,12 +88,13 @@ const I18N = {
     qInit:"Your message", qLayout:"Pick a photo layout",
     qVersion:"Pick a robot version", verNormal:"Normal", verSummer:"Summer",
     layGrid:"2×2 grid", layStrip:"Vertical strip",
-    initPh:"e.g. Our family ♥ / RAIM", initHint:"Any name or phrase (KO/EN). Up to 30 chars, optional.",
+    initPh:"e.g. RAIM", initHint:"Any name or phrase (KO/EN). Up to 30 chars(optional)",
     make:"Frame ready! Start shooting ▶",
     composing:"Placing photos in your frame",
     resultTitle:"Done!", retake:"Start over",
     download:"Save image", qrTitle:"Scan the QR to keep it",
     qrLead:"Point your phone camera at the QR to get your photo.",
+    qrExpire:"⏰ The QR link expires in 2 hours. Please save it now!",
     qrNoStore:"QR needs Supabase configured.\nFor now you can save the image below.",
   }
 };
@@ -183,10 +186,11 @@ function render(name){
 
 /* ---------------- START ---------------- */
 function Start(){
+  const rnd = ROBOTS[Math.floor(Math.random()*ROBOTS.length)];   // 매번 랜덤 로봇 프로필
   app.innerHTML = `<section class="screen on">
     ${header()}
     <div class="hero">
-      <div class="heroart"><div class="ring"></div><div class="face">${raimiSVG()}</div></div>
+      <div class="heroart"><div class="ring"></div><div class="face" id="heroface">${raimiSVG()}</div></div>
       <h1 style="font-size:34px;text-align:center;white-space:pre-line">${t("startTitle")}</h1>
       <p class="lead" style="text-align:center;white-space:pre-line">${t("startLead")}</p>
       <div class="steps">
@@ -197,6 +201,11 @@ function Start(){
     <button class="btn primary" id="go">${t("start")} ▶</button>
   </section>`;
   document.getElementById("go").onclick=()=>render("wizard");
+  // 랜덤 로봇 프로필 이미지로 교체 (실패 시 기본 SVG 유지)
+  const face=document.getElementById("heroface");
+  const img=new Image(); img.className="faceimg"; img.alt=rnd.ko;
+  img.onload=()=>{ face.innerHTML=""; face.appendChild(img); };
+  img.src=robotProfile(rnd.id);
 }
 
 /* ---------------- WIZARD (frame first) ---------------- */
@@ -336,7 +345,7 @@ function snap(video,idx){
   const vw=video.videoWidth||w, vh=video.videoHeight||h;
   const r=Math.max(w/vw,h/vh), dw=vw*r, dh=vh*r;
   ctx.drawImage(video,(w-dw)/2,(h-dh)/2,dw,dh);
-  state.shots[idx]={ dataURL:c.toDataURL("image/jpeg",0.9), canvas:c, faceCenter:null, score:0, parts:{} };
+  state.shots[idx]={ dataURL:c.toDataURL("image/jpeg",0.9), canvas:c, score:0 };
 }
 
 /* ---------------- ANALYZE ---------------- */
@@ -356,9 +365,6 @@ async function runAnalysis(){
         const res = state.faceLandmarker.detect(shot.canvas);
         if(res.faceLandmarks && res.faceLandmarks.length){
           facePresent=1;
-          const lm=res.faceLandmarks[0]; let mnx=1,mxx=0,mny=1,mxy=0;
-          for(const p of lm){ mnx=Math.min(mnx,p.x); mxx=Math.max(mxx,p.x); mny=Math.min(mny,p.y); mxy=Math.max(mxy,p.y); }
-          shot.faceCenter={ x:(mnx+mxx)/2, y:(mny+mxy)/2 };
           const bs=res.faceBlendshapes && res.faceBlendshapes[0];
           if(bs){ const get=n=>{ const c=bs.categories.find(x=>x.categoryName===n); return c?c.score:0; };
             eyesOpen = 1 - Math.max(get("eyeBlinkLeft"),get("eyeBlinkRight"));
@@ -559,11 +565,11 @@ function Result(){
   app.innerHTML=`<section class="screen on">
     ${header()}
     <h1 style="font-size:28px">🎉 ${t("resultTitle")}</h1>
-    <div class="resultwrap">
-      <canvas id="resultCanvas"></canvas>
+    <div class="resultrow">
+      <div class="resultphoto"><canvas id="resultCanvas"></canvas></div>
       <div class="qrcard" id="qrcard">
         <div id="qrbox"><div class="loaderdots"></div></div>
-        <div class="qtxt"><b id="qrtitle">${t("qrTitle")}</b><p id="qrlead">${t("qrLead")}</p></div>
+        <div class="qtxt"><b id="qrtitle">${t("qrTitle")}</b><p id="qrlead">${t("qrLead")}</p><p class="qrexpire" id="qrexpire">${t("qrExpire")}</p></div>
       </div>
     </div>
     <div class="row" style="margin-top:14px">
@@ -580,8 +586,9 @@ function Result(){
 }
 async function buildQR(canvas){
   const box=document.getElementById("qrbox"), card=document.getElementById("qrcard");
+  const expire=document.getElementById("qrexpire");
   if(!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY){
-    card.classList.add("err"); box.innerHTML="⚠️";
+    card.classList.add("err"); box.innerHTML="⚠️"; if(expire) expire.style.display="none";
     document.getElementById("qrtitle").textContent = LANG==='ko'?"QR 미설정":"QR not configured";
     const lead=document.getElementById("qrlead"); lead.style.whiteSpace="pre-line"; lead.textContent=t("qrNoStore"); return;
   }
@@ -589,19 +596,21 @@ async function buildQR(canvas){
     const url = await uploadToSupabase(canvas);
     const finalUrl = CONFIG.VIEWER_BASE ? `${CONFIG.VIEWER_BASE}?img=${encodeURIComponent(url)}` : url;
     box.innerHTML=""; await ensureQRLib();
-    new window.QRCode(box,{ text:finalUrl, width:120, height:120, colorDark:"#16233A", colorLight:"#ffffff", correctLevel:window.QRCode.CorrectLevel.M });
-  }catch(e){ console.error(e); card.classList.add("err"); box.innerHTML="⚠️";
+    new window.QRCode(box,{ text:finalUrl, width:184, height:184, colorDark:"#16233A", colorLight:"#ffffff", correctLevel:window.QRCode.CorrectLevel.M });
+  }catch(e){ console.error(e); card.classList.add("err"); box.innerHTML="⚠️"; if(expire) expire.style.display="none";
     document.getElementById("qrlead").textContent = LANG==='ko' ? "업로드에 실패했어요. 네트워크/버킷 설정을 확인하세요." : "Upload failed. Check network/bucket settings."; }
 }
 async function uploadToSupabase(canvas){
   const blob=await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.9));
   const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm");
   const sb=createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-  const path=`fourcut/${new Date().toISOString().slice(0,10)}/${Date.now()}.jpg`;
+  const path=`${new Date().toISOString().slice(0,10)}/${Date.now()}.jpg`;
   const { error } = await sb.storage.from(CONFIG.SUPABASE_BUCKET).upload(path, blob, { contentType:"image/jpeg", upsert:false });
   if(error) throw error;
-  const { data } = sb.storage.from(CONFIG.SUPABASE_BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  // 2시간(LINK_EXPIRE_SEC) 뒤 만료되는 서명 URL — 시간이 지나면 링크가 열리지 않음
+  const { data, error: signErr } = await sb.storage.from(CONFIG.SUPABASE_BUCKET).createSignedUrl(path, CONFIG.LINK_EXPIRE_SEC);
+  if(signErr) throw signErr;
+  return data.signedUrl;
 }
 let _qrLoaded=false;
 function ensureQRLib(){
@@ -613,12 +622,9 @@ function ensureQRLib(){
 
 /* ============================================================ helpers ============================================================ */
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const dist=(ax,ay,bx,by)=>Math.hypot(ax-bx,ay-by);
 function stopStream(){ if(state.stream){ state.stream.getTracks().forEach(t=>t.stop()); state.stream=null; } }
 function resetState(){ stopStream(); state.shots=[]; state.suggested=[]; state.picked=[]; state.caption=""; state._bgCanvas=null; state._robotImgs=[]; state._logoImg=null; state._museumImg=null; state._assetsP=null; }
 function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-function svgToImage(svg,w,h){ return new Promise(res=>{ const blob=new Blob([svg],{type:"image/svg+xml"}); const url=URL.createObjectURL(blob);
-  const img=new Image(); img.onload=()=>{ URL.revokeObjectURL(url); res(img); }; img.onerror=()=>res(null); img.src=url; }); }
 function urlToImage(src){ return new Promise(res=>{ const img=new Image(); img.crossOrigin="anonymous"; img.onload=()=>res(img); img.onerror=()=>res(null); img.src=src; }); }
 function hexToRgba(hex,a){ const n=parseInt(hex.slice(1),16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
 function lighten(hex,amt){ const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255;

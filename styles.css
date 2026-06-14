@@ -64,8 +64,9 @@ h1{font-family:var(--display); font-weight:400; line-height:1.12; margin:0;}
 .heroart .ring{position:absolute; inset:0; border-radius:50%;
   background:conic-gradient(var(--primary),var(--accent),var(--pop),var(--primary)); filter:blur(2px); opacity:.85; animation:spin 12s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
-.heroart .face{position:absolute; inset:18px; border-radius:50%; background:var(--surface); display:grid; place-items:center; box-shadow:var(--shadow);}
+.heroart .face{position:absolute; inset:18px; border-radius:50%; background:var(--surface); display:grid; place-items:center; box-shadow:var(--shadow); overflow:hidden;}
 .heroart .face svg{width:130px; height:130px;}
+.heroart .face .faceimg{width:82%; height:82%; object-fit:contain;}
 .steps{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:6px;}
 .pill{background:var(--surface); border:1px solid var(--line); color:var(--muted); padding:9px 14px; border-radius:999px; font-size:13px; font-weight:700;}
 .pill b{color:var(--ink);}
@@ -146,14 +147,17 @@ h1{font-family:var(--display); font-weight:400; line-height:1.12; margin:0;}
 .initwrap input:focus{outline:2px solid var(--primary);}
 .initwrap .hint{color:var(--muted); font-size:13px; margin:8px 2px 0;}
 
-/* RESULT */
-.resultwrap{flex:1; display:flex; flex-direction:column; align-items:center; gap:18px; overflow-y:auto;}
-#resultCanvas{max-width:60%; border-radius:14px; box-shadow:var(--shadow);}
-.qrcard{background:var(--surface); border:1px solid var(--line); border-radius:22px; padding:20px; box-shadow:var(--shadow); display:flex; gap:18px; align-items:center; width:100%;}
-.qrcard #qrbox{width:120px; height:120px; flex:none; display:grid; place-items:center; background:#fff; border-radius:12px;}
-.qrcard #qrbox img,.qrcard #qrbox canvas{width:120px; height:120px;}
-.qrcard .qtxt b{font-family:var(--display); font-size:18px;}
-.qrcard .qtxt p{margin:6px 0 0; color:var(--muted); font-size:14px; line-height:1.5;}
+/* RESULT — 좌: 완성 네컷 / 우: QR */
+.resultrow{flex:1; display:flex; gap:20px; align-items:stretch; min-height:0; margin-top:8px;}
+.resultphoto{flex:1.15; display:flex; align-items:center; justify-content:center; min-height:0; min-width:0;}
+.resultphoto canvas{max-width:100%; max-height:100%; object-fit:contain; border-radius:14px; box-shadow:var(--shadow); background:#fff;}
+.qrcard{flex:1; min-width:0; background:var(--surface); border:1px solid var(--line); border-radius:22px; padding:24px;
+  box-shadow:var(--shadow); display:flex; flex-direction:column; gap:16px; align-items:center; justify-content:center; text-align:center;}
+.qrcard #qrbox{width:200px; height:200px; max-width:100%; flex:none; display:grid; place-items:center; background:#fff; border-radius:14px;}
+.qrcard #qrbox img,.qrcard #qrbox canvas{width:200px; height:200px; max-width:100%;}
+.qrcard .qtxt b{font-family:var(--display); font-size:20px;}
+.qrcard .qtxt p{margin:8px 0 0; color:var(--muted); font-size:14px; line-height:1.5;}
+.qrcard .qtxt .qrexpire{margin-top:12px; font-weight:800; color:var(--pop); font-size:13.5px; line-height:1.45;}
 .qrcard.err{background:#fff4f2; border-color:#ffd5cd;}
 
 .loaderdots:after{content:"·"; animation:dots 1.2s steps(4,end) infinite;}
