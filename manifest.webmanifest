@@ -1,0 +1,20 @@
+{
+  "name": "RAIM 네컷 · RAIM 4CUT",
+  "short_name": "RAIM 네컷",
+  "description": "서울로봇인공지능과학관 로봇들과 함께 찍는 네컷 사진 스튜디오",
+  "lang": "ko",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EAF0F8",
+  "theme_color": "#1AB2C8",
+  "categories": ["photo", "entertainment", "education"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

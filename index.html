@@ -1,0 +1,55 @@
+<!--
+  RAIMI 네컷 사진 스튜디오  (Seoul Robot & AI Science Museum)
+  ------------------------------------------------------------------
+  단일 HTML 앱. 빌드 불필요. 본인 Vercel(정적 호스팅)에 올려 HTTPS로 띄우면
+  iPad Safari에서 카메라가 동작합니다. (Claude 미리보기 iframe에서는 카메라 권한이
+  막혀 동작하지 않습니다 — 반드시 직접 배포해서 테스트하세요.)
+
+  흐름: 시작 → ① 프레임 만들기 → ② 8컷 촬영 → ③ 4컷 선택(프레임 실시간 미리보기) → ④ 결과+QR
+
+  구조: index.html(마크업) · styles.css(스타일) · app.js(로직, ES module)
+
+  AI가 들어가는 곳 (과학관 설명용):
+   #1 얼굴 인식 배치  : MediaPipe FaceLandmarker(컴퓨터 비전)로 얼굴 위치를 찾아
+                       로봇 장식이 얼굴을 가리지 않게 배치.
+   #2 베스트샷 추천   : 8장의 선명도/눈뜸/미소를 점수화해 4장을 '추천'(노란 표시만, 선택은 관람객).
+   #3 생성형 배경     : CONFIG.AI_BACKGROUND_ENDPOINT(본인 백엔드) 설정 시 그 결과로 배경 생성.
+                       (미설정 시 절차적 패턴 폴백 — 이건 "AI"가 아니므로 그렇게 부르지 마세요.)
+-->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>RAIM 네컷 · RAIM 4CUT</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1AB2C8">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RAIM 네컷">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app"></div>
+<script type="module" src="app.js"></script>
+<script>
+  /* 서비스 워커 등록 (HTTPS 또는 localhost에서만 동작) */
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js")
+        .catch(err => console.warn("SW registration failed:", err));
+    });
+  }
+</script>
+</body>
+</html>
