@@ -1,7 +1,7 @@
 /* ============================================================ CONFIG ============================================================ */
 const CONFIG = {
-  SUPABASE_URL:        "",
-  SUPABASE_ANON_KEY:   "",
+  SUPABASE_URL:        "https://immsmzbvbdpcgtrxgkiq.supabase.co",
+  SUPABASE_ANON_KEY:   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltbXNtemJ2YmRwY2d0cnhna2lxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NDE3NTQsImV4cCI6MjA5NjExNzc1NH0.WwKqIa6R7amfTBsezTyhCEEjwRKa37T5QxMFEiOgq7Q",
   SUPABASE_BUCKET:     "fourcut",
   VIEWER_BASE:         "",
   AI_BACKGROUND_ENDPOINT: "",
