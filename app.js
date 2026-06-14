@@ -39,7 +39,25 @@ const THEMES = [
   { id:"coral",   hex:"#E8CBD3", logo:"pink"   }, { id:"night", hex:"#2A437E", logo:"navy"   },
 ];
 const MUSEUM_LOGO = "assets/seoulraim_logo.png";
-const MUSEUM_LOGO_WHITE = "assets/seoulraim_logo_white.png";   // 어두운 프레임용 흰색 반전
+const MUSEUM_TEXT = "서울로봇인공지능과학관 | Seoul Robot&AI Science Museum";
+/* 기념 날짜 — 서버 기준(한국시간) YYYY.MM.DD */
+function kstDateStr(){
+  const p = new Intl.DateTimeFormat("en-CA",{ timeZone:"Asia/Seoul", year:"numeric", month:"2-digit", day:"2-digit" }).formatToParts(new Date());
+  const g = type => p.find(x=>x.type===type).value;
+  return `${g("year")}.${g("month")}.${g("day")}`;
+}
+/* 캔버스에 쓰기 전 웹폰트 로드 보장 */
+async function ensureFonts(){
+  try{
+    await Promise.all([
+      document.fonts.load('800 72px Pretendard'),
+      document.fonts.load('600 44px Pretendard'),
+      document.fonts.load('300 26px Pretendard'),
+      document.fonts.load('400 76px "Nanum Pen Script"'),
+    ]);
+    await document.fonts.ready;
+  }catch(e){}
+}
 const frameLogoPath = theme => `assets/frame-logo/frame-logo-${theme.logo}.png`;
 
 /* ============================================================ i18n ============================================================ */
@@ -59,14 +77,13 @@ const I18N = {
     rec:"AI 추천", picked:"선택됨", next:"완성하기", preview:"내 프레임",
     wizTitle:"프레임 만들기",
     qColor:"프레임 색을 골라요", qRobot:"함께할 로봇을 골라요",
-    qInit:"나만의 문구", qLayout:"사진 배치를 골라요",
+    qInit:"나만의 문구",
     qVersion:"로봇 버전을 골라요", verNormal:"일반", verSummer:"여름",
-    layGrid:"2×2 그리드", layStrip:"세로 4컷",
     initPh:"예: 라이미 / RAIM", initHint:"이름·문구 자유롭게 (한글/영문). 30자 이내(선택)",
     make:"프레임 완성! 촬영하기 ▶",
     composing:"프레임에 사진을 담는 중",
     resultTitle:"완성!", retake:"처음부터",
-    download:"이미지 저장", qrTitle:"QR로 받아가세요",
+    qrTitle:"QR로 받아가세요",
     qrLead:"휴대폰 카메라로 QR을 스캔하면 사진을 받을 수 있어요.",
     qrExpire:"⏰ QR(사진 링크)은 2시간 뒤 사라져요.\n미리 저장해 주세요!",
     qrNoStore:"QR을 만들려면 Supabase 설정이 필요해요.\n지금은 아래 버튼으로 저장만 가능합니다.",
@@ -86,16 +103,15 @@ const I18N = {
     rec:"AI pick", picked:"selected", next:"Finish", preview:"My frame",
     wizTitle:"Make your frame",
     qColor:"Pick a frame color", qRobot:"Pick a robot friend",
-    qInit:"Your message", qLayout:"Pick a photo layout",
+    qInit:"Your message",
     qVersion:"Pick a robot version", verNormal:"Normal", verSummer:"Summer",
-    layGrid:"2×2 grid", layStrip:"Vertical strip",
     initPh:"e.g. RAIM", initHint:"Any name or phrase (KO/EN). Up to 30 chars(optional)",
     make:"Frame ready! Start shooting ▶",
     composing:"Placing photos in your frame",
     resultTitle:"Done!", retake:"Start over",
-    download:"Save image", qrTitle:"Scan the QR to keep it",
+    qrTitle:"Scan the QR to keep it",
     qrLead:"Point your phone camera at the QR to get your photo.",
-    qrExpire:"⏰ The QR link expires in 2 hours. Please save it now!",
+    qrExpire:"⏰ The QR link expires in 2 hours.\nPlease save it now!",
     qrNoStore:"QR needs Supabase configured.\nFor now you can save the image below.",
   }
 };
@@ -137,28 +153,6 @@ function robotSVG(color){
     <rect x="48" y="12" width="4" height="10" rx="2" fill="${dark}"/><circle cx="50" cy="11" r="3.6" fill="${color}"/>
     <rect x="16" y="46" width="8" height="14" rx="4" fill="${dark}"/><rect x="76" y="46" width="8" height="14" rx="4" fill="${dark}"/>
     <rect x="34" y="70" width="11" height="13" rx="4" fill="${dark}"/><rect x="55" y="70" width="11" height="13" rx="4" fill="${dark}"/>
-  </svg>`;
-}
-/* layout example diagrams */
-function layoutExampleSVG(kind, color){
-  const f="#cfd9e8", line="#16233A";
-  if(kind==="grid"){
-    return `<svg viewBox="0 0 84 116" xmlns="http://www.w3.org/2000/svg">
-      <rect x="2" y="2" width="80" height="112" rx="10" fill="#fff" stroke="${color}" stroke-width="3"/>
-      <rect x="14" y="12" width="56" height="6" rx="3" fill="${line}"/>
-      <rect x="12" y="26" width="28" height="34" rx="4" fill="${f}"/><rect x="44" y="26" width="28" height="34" rx="4" fill="${f}"/>
-      <rect x="12" y="64" width="28" height="34" rx="4" fill="${f}"/><rect x="44" y="64" width="28" height="34" rx="4" fill="${f}"/>
-      <circle cx="64" cy="106" r="5" fill="${color}"/>
-    </svg>`;
-  }
-  return `<svg viewBox="0 0 84 116" xmlns="http://www.w3.org/2000/svg">
-    <rect x="2" y="2" width="80" height="112" rx="10" fill="#fff" stroke="${color}" stroke-width="3"/>
-    <rect x="14" y="10" width="56" height="5" rx="2.5" fill="${line}"/>
-    <rect x="14" y="20" width="56" height="18" rx="4" fill="${f}"/>
-    <rect x="14" y="41" width="56" height="18" rx="4" fill="${f}"/>
-    <rect x="14" y="62" width="56" height="18" rx="4" fill="${f}"/>
-    <rect x="14" y="83" width="56" height="18" rx="4" fill="${f}"/>
-    <circle cx="64" cy="108" r="4.5" fill="${color}"/>
   </svg>`;
 }
 
@@ -234,10 +228,6 @@ function Wizard(){
           <p class="hint">${t("initHint")}</p>
         </div>
       </div>
-      <div class="qblock">
-        <p class="qtitle"><span class="n">5</span>${t("qLayout")}</p>
-        <div class="layouts" id="layouts"></div>
-      </div>
     </div>
     <button class="btn pop" id="make">✨ ${t("make")}</button>
   </section>`;
@@ -262,13 +252,6 @@ function Wizard(){
     d.innerHTML=`<div class="ill">${ill}</div><div class="nm">${r.ko}<small>${r.en}</small></div>`;
     d.onclick=()=>{ state.robot=r; Wizard(); };
     robots.appendChild(d);
-  });
-  const layouts=document.getElementById("layouts");
-  [["grid",t("layGrid")],["strip",t("layStrip")]].forEach(([id,label])=>{
-    const d=document.createElement("div"); d.className="layoutcard"+(state.layout===id?" sel":"");
-    d.innerHTML=`<div class="ex">${layoutExampleSVG(id, state.theme.hex)}</div><div class="nm">${label}</div>`;
-    d.onclick=()=>{ state.layout=id; Wizard(); };
-    layouts.appendChild(d);
   });
   const init=document.getElementById("initInput");
   init.oninput=e=>{ state.caption=e.target.value.slice(0,30); e.target.value=state.caption; };
@@ -446,10 +429,11 @@ async function refreshPreview(){
 /* ---------------- COMPOSE ---------------- */
 const OUT_W=1080, OUT_H=1620;
 async function prepareAssets(){
+  await ensureFonts();   // 캔버스 텍스트용 웹폰트 로드
   // 선택된 버전의 1~4번 포즈를 컷마다 하나씩 쓰기 위해 모두 로드
   state._robotImgs = await Promise.all([1,2,3,4].map(i=>urlToImage(robotImgPath(state.robot.id, state.version, i))));
   state._logoImg   = await urlToImage(frameLogoPath(state.theme));
-  state._museumImg = await urlToImage(isDark(state.theme.hex) ? MUSEUM_LOGO_WHITE : MUSEUM_LOGO);  // 어두운 배경이면 흰색 반전
+  state._museumImg = await urlToImage(MUSEUM_LOGO);
   state._bgCanvas  = await buildBackgroundCanvas();
 }
 function robotImgForSlot(k){
@@ -469,58 +453,96 @@ async function buildBackgroundCanvas(){
   proceduralBackground(ctx); return c;
 }
 function proceduralBackground(ctx){
-  ctx.fillStyle=state.theme.hex; ctx.fillRect(0,0,OUT_W,OUT_H);   // 지정 헥사코드 단색
+  const base=state.theme.hex;
+  const g=ctx.createLinearGradient(0,0,OUT_W,OUT_H);
+  g.addColorStop(0, lighten(base,0.82)); g.addColorStop(1, lighten(base,0.55));
+  ctx.fillStyle=g; ctx.fillRect(0,0,OUT_W,OUT_H);
+  scatterDecor(ctx, base);   // 하트·꽃·반짝이 떠다니기
+}
+function scatterDecor(ctx, base){
+  const kinds=["heart","flower","sparkle","dot","heart","flower"];
+  for(let i=0;i<78;i++){
+    const x=Math.random()*OUT_W, y=Math.random()*OUT_H, s=14+Math.random()*32;
+    ctx.save();
+    ctx.translate(x,y); ctx.rotate((Math.random()-0.5)*0.9);
+    ctx.globalAlpha=0.10+Math.random()*0.16;
+    ctx.fillStyle=Math.random()<0.45 ? "#ffffff" : base;
+    const k=kinds[(Math.random()*kinds.length)|0];
+    if(k==="heart") drawHeart(ctx,s);
+    else if(k==="flower") drawFlower(ctx,s);
+    else if(k==="sparkle") drawSparkle(ctx,s);
+    else { ctx.beginPath(); ctx.arc(0,0,s*0.16,0,Math.PI*2); ctx.fill(); }
+    ctx.restore();
+  }
+}
+function drawHeart(ctx,s){
+  const w=s, h=s;
+  ctx.beginPath();
+  ctx.moveTo(0,-h*0.15);
+  ctx.bezierCurveTo(-w*0.5,-h*0.55,-w*0.5,h*0.12,0,h*0.45);
+  ctx.bezierCurveTo(w*0.5,h*0.12,w*0.5,-h*0.55,0,-h*0.15);
+  ctx.closePath(); ctx.fill();
+}
+function drawFlower(ctx,s){
+  const pr=s*0.26, d=s*0.30;
+  for(let i=0;i<5;i++){ const a=i*2*Math.PI/5; ctx.beginPath(); ctx.arc(Math.cos(a)*d, Math.sin(a)*d, pr, 0, Math.PI*2); ctx.fill(); }
+  ctx.beginPath(); ctx.arc(0,0,pr*0.75,0,Math.PI*2); ctx.fill();
+}
+function drawSparkle(ctx,s){
+  const o=s*0.5, i=s*0.13;
+  ctx.beginPath();
+  ctx.moveTo(0,-o); ctx.lineTo(i,-i); ctx.lineTo(o,0); ctx.lineTo(i,i);
+  ctx.lineTo(0,o); ctx.lineTo(-i,i); ctx.lineTo(-o,0); ctx.lineTo(-i,-i);
+  ctx.closePath(); ctx.fill();
 }
 async function composeFrame(picks){
   const c=document.createElement("canvas"); c.width=OUT_W; c.height=OUT_H; const ctx=c.getContext("2d");
   if(state._bgCanvas) ctx.drawImage(state._bgCanvas,0,0); else proceduralBackground(ctx);
 
-  const pad=60, footerH = state.caption ? 120 : 70;
+  const pad=60;
+  const ink    = "#16233A";
+  const subInk = "rgba(22,35,58,.60)";
 
-  /* ---- 상단: 좌측 과학관 로고 + 색상별 frame-logo 배너 ---- */
+  /* ---- 상단: 좌측 과학관 로고 · 우측 기념 날짜 · 가운데 RAIM ---- */
   const mLogo = state._museumImg;
-  const mH = 132, mW = mLogo ? mLogo.naturalWidth/mLogo.naturalHeight*mH : 0;
-  const gapH = mLogo ? 22 : 0;
-  const bannerX = pad + (mLogo? mW+gapH : 0);
-  const bannerW = OUT_W - pad - bannerX;
+  if(mLogo){ const mH=70, mW=mLogo.naturalWidth/mLogo.naturalHeight*mH; ctx.drawImage(mLogo, pad, pad, mW, mH); }
+  ctx.textAlign="right"; ctx.textBaseline="top"; ctx.fillStyle=ink;
+  ctx.font="600 44px Pretendard, sans-serif"; ctx.fillText(kstDateStr(), OUT_W-pad, pad+8);
+
   const logo = state._logoImg;
-  const bannerH = logo ? Math.min(bannerW * logo.naturalHeight/logo.naturalWidth, 250) : 96;
-  const headerH = Math.max(mH, bannerH);
+  let headerBottom;
   if(logo){
-    const bh = bannerW * logo.naturalHeight/logo.naturalWidth;
-    const by = pad + (headerH - Math.min(bh,250))/2, bH = Math.min(bh,250);
-    roundRect(ctx, bannerX, by, bannerW, bH, 22); ctx.save(); ctx.clip();
-    ctx.drawImage(logo, bannerX, by, bannerW, bH); ctx.restore();
+    const lH=190, lW=logo.naturalWidth/logo.naturalHeight*lH, ly=pad+86;
+    ctx.drawImage(logo, (OUT_W-lW)/2, ly, lW, lH);
+    headerBottom = ly + lH;
   } else {
-    ctx.textAlign="center"; ctx.fillStyle="#16233A"; ctx.font="64px Jua, sans-serif";
-    ctx.fillText("RAIM 네컷", OUT_W/2, pad+64);
+    ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle=ink;
+    ctx.font="800 80px Pretendard, sans-serif"; ctx.fillText("RAIM", OUT_W/2, pad+180);
+    headerBottom = pad+210;
   }
-  if(mLogo) ctx.drawImage(mLogo, pad, pad + (headerH-mH)/2, mW, mH);
 
-  const top = pad + headerH + 18, bottom = OUT_H - footerH - 10;
+  /* ---- 사진 영역 (2×2 그리드 고정) ---- */
+  const footerH = state.caption ? 156 : 84;
+  const top = headerBottom + 26, bottom = OUT_H - footerH - 6;
   const areaW=OUT_W-pad*2, areaH=bottom-top;
-
-  let slots;
-  if(state.layout==="grid"){
-    const gap=24, sw=(areaW-gap)/2, sh=(areaH-gap)/2;
-    slots=[[pad,top,sw,sh],[pad+sw+gap,top,sw,sh],[pad,top+sh+gap,sw,sh],[pad+sw+gap,top+sh+gap,sw,sh]];
-  } else {
-    const gap=20, sh=(areaH-gap*3)/4, sw=areaW;
-    slots=[0,1,2,3].map(k=>[pad,top+k*(sh+gap),sw,sh]);
-  }
+  const gap=24, sw=(areaW-gap)/2, sh=(areaH-gap)/2;
+  const slots=[[pad,top,sw,sh],[pad+sw+gap,top,sw,sh],[pad,top+sh+gap,sw,sh],[pad+sw+gap,top+sh+gap,sw,sh]];
   for(let k=0;k<4;k++){ const [x,y,w,h]=slots[k];
     drawSlotPhoto(ctx, picks[k], x,y,w,h);
     if(picks[k]) drawRobotInSlot(ctx, robotImgForSlot(k), x,y,w,h);
   }
 
-  /* ---- 하단: 나만의 문구 ---- */
+  /* ---- 하단: 손글씨 문구 + 과학관 명칭 ---- */
   if(state.caption){
-    ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle=isDark(state.theme.hex)?"#fff":"#16233A";
-    let fs=58; ctx.font=`${fs}px Jua, sans-serif`;
-    const maxW = OUT_W - pad*2;
-    while(ctx.measureText(state.caption).width > maxW && fs>22){ fs-=2; ctx.font=`${fs}px Jua, sans-serif`; }
-    ctx.fillText(state.caption, OUT_W/2, OUT_H - footerH + footerH*0.62);
+    ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle=ink;
+    let fs=78; ctx.font=`${fs}px "Nanum Pen Script", cursive`;
+    const maxW=OUT_W-pad*2;
+    while(ctx.measureText(state.caption).width>maxW && fs>30){ fs-=2; ctx.font=`${fs}px "Nanum Pen Script", cursive`; }
+    ctx.fillText(state.caption, OUT_W/2, OUT_H - 96);
   }
+  ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle=subInk;
+  ctx.font="300 26px Pretendard, sans-serif";
+  ctx.fillText(MUSEUM_TEXT, OUT_W/2, OUT_H - 40);
   return c;
 }
 /* 로봇 포즈를 각 사진의 오른쪽 하단에 배치 (기본 배치) */
@@ -542,7 +564,7 @@ function drawSlotPhoto(ctx, shot, x,y,w,h){
     ctx.drawImage(shot.canvas, x+(w-dw)/2, y+(h-dh)/2, dw, dh);
   } else {
     ctx.fillStyle="rgba(22,35,58,.08)"; ctx.fillRect(x,y,w,h);
-    ctx.fillStyle="rgba(22,35,58,.28)"; ctx.font="56px Jua, sans-serif"; ctx.textAlign="center";
+    ctx.fillStyle="rgba(22,35,58,.28)"; ctx.font="800 56px Pretendard, sans-serif"; ctx.textAlign="center";
     ctx.fillText("?", x+w/2, y+h/2+18);
   }
   ctx.restore();
@@ -569,14 +591,11 @@ function Result(){
       </div>
     </div>
     <div class="row" style="margin-top:14px">
-      <button class="btn ghost grow" id="download">⬇︎ ${t("download")}</button>
       <button class="btn primary grow" id="retake">↻ ${t("retake")}</button>
     </div>
   </section>`;
   const rc=document.getElementById("resultCanvas"), fc=state._finalCanvas;
   rc.width=fc.width; rc.height=fc.height; rc.getContext("2d").drawImage(fc,0,0);
-  document.getElementById("download").onclick=()=>{ const a=document.createElement("a");
-    a.download=`raimi-4cut-${Date.now()}.jpg`; a.href=fc.toDataURL("image/jpeg",0.92); a.click(); };
   document.getElementById("retake").onclick=()=>{ resetState(); render("start"); };
   buildQR(fc);
 }
@@ -622,6 +641,7 @@ function stopStream(){ if(state.stream){ state.stream.getTracks().forEach(t=>t.s
 function resetState(){ stopStream(); state.shots=[]; state.suggested=[]; state.picked=[]; state.caption=""; state._bgCanvas=null; state._robotImgs=[]; state._logoImg=null; state._museumImg=null; state._assetsP=null; }
 function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
 function urlToImage(src){ return new Promise(res=>{ const img=new Image(); img.crossOrigin="anonymous"; img.onload=()=>res(img); img.onerror=()=>res(null); img.src=src; }); }
-function isDark(hex){ const n=parseInt(hex.slice(1),16); return (0.299*((n>>16)&255)+0.587*((n>>8)&255)+0.114*(n&255)) < 140; }
+function lighten(hex,amt){ const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=Math.round(r+(255-r)*amt); g=Math.round(g+(255-g)*amt); b=Math.round(b+(255-b)*amt); return `rgb(${r},${g},${b})`; }
 
 render("start");
