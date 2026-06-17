@@ -111,7 +111,7 @@ const I18N = {
   },
   en:{
     sub:"Robot & AI Science Museum 4-Cut",
-    startTitle:"Take photos\nwith the RAIM robots",
+    startTitle:"Take photos\nwith the RAIM robots!",
     startLead:"First design your frame, then take 6 shots.\nAI suggests the best shots and detects faces to decorate the frame.",
     s1:"① Make frame", s2:"② 6 shots", s3:"③ Pick 4", s4:"④ Get QR",
     start:"Start",
@@ -120,7 +120,7 @@ const I18N = {
     aiwatch:"AI is detecting your face",
     analyzing:"AI is picking the best shots",
     selTitle:"Pick your favorite 4",
-    selLead:"Yellow tags are AI picks. Your choices fill the frame on the right.",
+    selLead:"Yellow tags are AI picks. Your choices will fill the frame on the right.",
     rec:"AI pick", picked:"selected", next:"Finish", preview:"My frame",
     wizTitle:"Make your frame",
     qColor:"Pick a frame color", qRobot:"Pick a robot friend",
@@ -525,24 +525,25 @@ async function composeFrame(picks){
   const ink    = "#16233A";
   const subInk = "rgba(22,35,58,.60)";
 
-  /* ---- 상단: 좌측 과학관 로고 · 우측 기념 날짜 · 가운데 RAIM ---- */
+  /* ---- 상단 한 줄: 좌측 과학관 로고 · 가운데 RAIM · 우측 기념 날짜 (세로 중앙 정렬) ---- */
   const accent = deepThemeColor(state.theme.hex);   // 로고·날짜는 프레임 색의 진한 톤
-  const mLogo = state._museumImg;
-  if(mLogo){ const iw=mLogo.naturalWidth||mLogo.width, ih=mLogo.naturalHeight||mLogo.height, mH=70, mW=iw/ih*mH; ctx.drawImage(mLogo, pad, pad, mW, mH); }
-  ctx.textAlign="right"; ctx.textBaseline="top"; ctx.fillStyle=accent;
-  ctx.font="300 30px Pretendard, sans-serif"; ctx.fillText(kstDateStr(), OUT_W-pad, pad+14);
-
+  const topGap = 12, rowH = 170, rowMid = topGap + rowH/2;
+  const headerBottom = topGap + rowH;
+  // 가운데 RAIM
   const logo = state._logoImg;
-  let headerBottom;
   if(logo){
-    const lH=190, lW=logo.naturalWidth/logo.naturalHeight*lH, ly=pad+86;
-    ctx.drawImage(logo, (OUT_W-lW)/2, ly, lW, lH);
-    headerBottom = ly + lH;
+    const lW=logo.naturalWidth/logo.naturalHeight*rowH;
+    ctx.drawImage(logo, (OUT_W-lW)/2, topGap, lW, rowH);
   } else {
-    ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle=ink;
-    ctx.font="800 80px Pretendard, sans-serif"; ctx.fillText("RAIM", OUT_W/2, pad+180);
-    headerBottom = pad+210;
+    ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillStyle=accent;
+    ctx.font="800 96px Pretendard, sans-serif"; ctx.fillText("RAIM", OUT_W/2, rowMid);
   }
+  // 좌측 과학관 로고
+  const mLogo = state._museumImg;
+  if(mLogo){ const iw=mLogo.naturalWidth||mLogo.width, ih=mLogo.naturalHeight||mLogo.height, mH=70, mW=iw/ih*mH; ctx.drawImage(mLogo, pad, rowMid-mH/2, mW, mH); }
+  // 우측 기념 날짜
+  ctx.textAlign="right"; ctx.textBaseline="middle"; ctx.fillStyle=accent;
+  ctx.font="300 30px Pretendard, sans-serif"; ctx.fillText(kstDateStr(), OUT_W-pad, rowMid);
 
   /* ---- 사진 영역 (2×2 그리드 고정) ---- */
   const footerH = state.caption ? 156 : 84;
