@@ -39,7 +39,28 @@ const THEMES = [
   { id:"coral",   hex:"#E8CBD3", logo:"pink"   }, { id:"night", hex:"#2A437E", logo:"navy"   },
 ];
 const MUSEUM_LOGO = "assets/seoulraim_logo.png";
+const MUSEUM_LOGO_WHITE = "assets/seoulraim_logo_white.png";   // 알파 마스크(로고 색 입히기용)
 const MUSEUM_TEXT = "서울로봇인공지능과학관 | Seoul Robot&AI Science Museum";
+/* 프레임 색의 진한 톤 — 로고·날짜 글씨색(예: 연보라 → 보라) */
+function hslToRgb(h,s,l){
+  const f=n=>{ const k=(n+h*12)%12, a=s*Math.min(l,1-l); return l-a*Math.max(-1,Math.min(k-3,9-k,1)); };
+  const to=v=>Math.round(v*255);
+  return `rgb(${to(f(0))},${to(f(8))},${to(f(4))})`;
+}
+function deepThemeColor(hex){
+  const n=parseInt(hex.slice(1),16); const r=((n>>16)&255)/255,g=((n>>8)&255)/255,b=(n&255)/255;
+  const mx=Math.max(r,g,b),mn=Math.min(r,g,b); let h=0; const l=(mx+mn)/2;
+  if(mx!==mn){ const d=mx-mn;
+    h = mx===r ? (g-b)/d+(g<b?6:0) : mx===g ? (b-r)/d+2 : (r-g)/d+4; h/=6; }
+  return hslToRgb(h, 0.55, 0.42);   // 채도·명도 고정해 또렷하고 읽히는 톤
+}
+/* 이미지(알파 마스크)를 단색으로 칠해 반환 */
+function tintImage(img, color){
+  const w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+  const c=document.createElement("canvas"); c.width=w; c.height=h; const x=c.getContext("2d");
+  x.drawImage(img,0,0); x.globalCompositeOperation="source-in"; x.fillStyle=color; x.fillRect(0,0,w,h);
+  return c;
+}
 /* 기념 날짜 — 서버 기준(한국시간) YYYY.MM.DD */
 function kstDateStr(){
   const p = new Intl.DateTimeFormat("en-CA",{ timeZone:"Asia/Seoul", year:"numeric", month:"2-digit", day:"2-digit" }).formatToParts(new Date());
@@ -51,8 +72,8 @@ async function ensureFonts(){
   try{
     await Promise.all([
       document.fonts.load('800 72px Pretendard'),
-      document.fonts.load('600 44px Pretendard'),
       document.fonts.load('400 26px Pretendard'),
+      document.fonts.load('300 30px Pretendard'),
       document.fonts.load('400 76px Ttobak'),
     ]);
     await document.fonts.ready;
@@ -433,7 +454,8 @@ async function prepareAssets(){
   // 선택된 버전의 1~4번 포즈를 컷마다 하나씩 쓰기 위해 모두 로드
   state._robotImgs = await Promise.all([1,2,3,4].map(i=>urlToImage(robotImgPath(state.robot.id, state.version, i))));
   state._logoImg   = await urlToImage(frameLogoPath(state.theme));
-  state._museumImg = await urlToImage(MUSEUM_LOGO);
+  const wl = await urlToImage(MUSEUM_LOGO_WHITE);   // 로고를 프레임 색(진한 톤)으로
+  state._museumImg = wl ? tintImage(wl, deepThemeColor(state.theme.hex)) : await urlToImage(MUSEUM_LOGO);
   state._bgCanvas  = await buildBackgroundCanvas();
 }
 function robotImgForSlot(k){
@@ -504,10 +526,11 @@ async function composeFrame(picks){
   const subInk = "rgba(22,35,58,.60)";
 
   /* ---- 상단: 좌측 과학관 로고 · 우측 기념 날짜 · 가운데 RAIM ---- */
+  const accent = deepThemeColor(state.theme.hex);   // 로고·날짜는 프레임 색의 진한 톤
   const mLogo = state._museumImg;
-  if(mLogo){ const mH=70, mW=mLogo.naturalWidth/mLogo.naturalHeight*mH; ctx.drawImage(mLogo, pad, pad, mW, mH); }
-  ctx.textAlign="right"; ctx.textBaseline="top"; ctx.fillStyle=ink;
-  ctx.font="600 44px Pretendard, sans-serif"; ctx.fillText(kstDateStr(), OUT_W-pad, pad+8);
+  if(mLogo){ const iw=mLogo.naturalWidth||mLogo.width, ih=mLogo.naturalHeight||mLogo.height, mH=70, mW=iw/ih*mH; ctx.drawImage(mLogo, pad, pad, mW, mH); }
+  ctx.textAlign="right"; ctx.textBaseline="top"; ctx.fillStyle=accent;
+  ctx.font="300 30px Pretendard, sans-serif"; ctx.fillText(kstDateStr(), OUT_W-pad, pad+14);
 
   const logo = state._logoImg;
   let headerBottom;

@@ -4,7 +4,7 @@
    - 외부 CDN(폰트/MediaPipe/Supabase/QR): stale-while-revalidate
    - 업로드(POST)·AI 호출은 캐싱하지 않음(GET만 처리)
    캐시를 갱신하려면 VERSION 값을 올리세요. */
-const VERSION = "raim-v3";
+const VERSION = "raim-v4";
 const SHELL   = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 
